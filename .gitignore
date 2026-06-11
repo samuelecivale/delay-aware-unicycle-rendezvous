@@ -1,0 +1,17 @@
+.DS_Store
+*.asv
+*.m~
+*.autosave
+*.tmp
+
+# Octave temporary files
+octave-workspace
+
+# Large intermediate animation frames
+*_frames/
+p1_outputs_matlab/videos/*_frames/
+
+# Keep final outputs
+!p1_outputs_matlab/figures/*.png
+!p1_outputs_matlab/tables/*.csv
+!p1_outputs_matlab/videos/*.mp4
