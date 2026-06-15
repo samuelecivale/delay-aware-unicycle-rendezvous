@@ -1,53 +1,33 @@
 function A = adjacency_matrix(graph_type, N)
-%ADJACENCY_MATRIX Generate canonical undirected graphs.
-%
-% graph_type:
-%   'path'         chain graph
-%   'ring'         cycle graph
-%   'star'         node 1 connected to all others
-%   'complete'     all-to-all graph
-%   'disconnected' two separated path components
-
-    A = zeros(N, N);
-
-    if strcmp(graph_type, 'path')
-        for i = 1:(N-1)
-            A(i, i+1) = 1;
-            A(i+1, i) = 1;
+%ADJACENCY_MATRIX Build common undirected adjacency matrices.
+A = zeros(N,N);
+graph_type = lower(graph_type);
+switch graph_type
+    case 'path'
+        for i = 1:N-1
+            A(i,i+1) = 1; A(i+1,i) = 1;
         end
-
-    elseif strcmp(graph_type, 'ring')
+    case 'ring'
         for i = 1:N
             j = mod(i, N) + 1;
-            A(i, j) = 1;
-            A(j, i) = 1;
+            A(i,j) = 1; A(j,i) = 1;
         end
-
-    elseif strcmp(graph_type, 'star')
+    case 'star'
         for i = 2:N
-            A(1, i) = 1;
-            A(i, 1) = 1;
+            A(1,i) = 1; A(i,1) = 1;
         end
-
-    elseif strcmp(graph_type, 'complete')
-        A = ones(N, N) - eye(N);
-
-    elseif strcmp(graph_type, 'disconnected')
+    case 'complete'
+        A = ones(N,N) - eye(N);
+    case 'disconnected'
+        % Two path components of approximately equal size.
         split = floor(N/2);
-
-        for i = 1:(split-1)
-            A(i, i+1) = 1;
-            A(i+1, i) = 1;
+        for i = 1:split-1
+            A(i,i+1) = 1; A(i+1,i) = 1;
         end
-
-        for i = split:(N-1)
-            if i >= split + 1
-                A(i, i+1) = 1;
-                A(i+1, i) = 1;
-            end
+        for i = split+1:N-1
+            A(i,i+1) = 1; A(i+1,i) = 1;
         end
-
-    else
-        error('Unknown graph_type.');
-    end
+    otherwise
+        error('adjacency_matrix:UnknownType', 'Unknown graph type: %s', graph_type);
+end
 end

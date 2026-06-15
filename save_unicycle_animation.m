@@ -1,89 +1,30 @@
-function output_path = save_unicycle_animation(states, time, output_path, title_str, xlim_vals, ylim_vals, num_frames)
-%SAVE_UNICYCLE_ANIMATION Save unicycle animation with heading segments.
-
-
-    try
-        make_videos = evalin('base', 'MAKE_VIDEOS');
-    catch
-        make_videos = true;
+function save_unicycle_animation(states, time, filename, title_str, xlim_vals, ylim_vals, num_frames)
+%SAVE_UNICYCLE_ANIMATION Save unicycle animation with headings.
+if nargin < 7, num_frames = 100; end
+states = double(states); time = time(:); N = size(states,2); K = size(states,1);
+frames = frame_indices_for_animation(K, num_frames);
+[writer, frames_dir, use_video_writer] = make_video_writer_or_frames(filename, 15);
+fig = figure('Visible','off');
+for f = 1:length(frames)
+    k = frames(f);
+    clf; hold on;
+    for i = 1:N
+        plot(states(1:k,i,1), states(1:k,i,2), 'LineWidth', 1.0);
     end
-
-    if ~make_videos
-        fprintf('Skipping video generation: MAKE_VIDEOS=false.\n');
-        return;
+    plot(states(k,:,1), states(k,:,2), 'o', 'MarkerSize', 7, 'LineWidth', 1.2);
+    for i = 1:N
+        x = states(k,i,1); y = states(k,i,2); th = states(k,i,3);
+        quiver(x, y, 0.35*cos(th), 0.35*sin(th), 0, 'LineWidth', 1.1);
     end
-
-    N = size(states, 2);
-    K = length(time);
-    frame_indices = round(linspace(1, K, num_frames));
-
-    [folder, name, ext] = fileparts(output_path);
-    ensure_dir(folder);
-
-    use_video = (exist('VideoWriter', 'class') == 8) || (exist('VideoWriter', 'file') == 2);
-
-    if use_video
-        try
-            writer = VideoWriter(output_path, 'MPEG-4');
-        catch
-            output_path = fullfile(folder, [name '.avi']);
-            writer = VideoWriter(output_path, 'Motion JPEG AVI');
-        end
-        writer.FrameRate = 15;
-        open(writer);
+    grid on; axis equal; xlim(xlim_vals); ylim(ylim_vals);
+    xlabel('x'); ylabel('y'); title(sprintf('%s, t = %.1f s', title_str, time(k)));
+    drawnow;
+    if use_video_writer
+        writeVideo(writer, getframe(fig));
     else
-        frame_folder = fullfile(folder, [name '_frames']);
-        ensure_dir(frame_folder);
+        print(fig, fullfile(frames_dir, sprintf('frame_%04d.png', f)), '-dpng', '-r120');
     end
-
-    fig = figure('Visible', 'off');
-
-    for f = 1:length(frame_indices)
-        k = frame_indices(f);
-
-        clf(fig);
-        hold on;
-
-        for i = 1:N
-            x = squeeze(states(1:k, i, 1));
-            y = squeeze(states(1:k, i, 2));
-
-            plot(x, y, 'LineWidth', 1.2);
-            plot(states(k, i, 1), states(k, i, 2), 'o', 'MarkerSize', 6);
-
-            theta = states(k, i, 3);
-            len = 0.35;
-            plot([states(k, i, 1), states(k, i, 1) + len*cos(theta)], ...
-                 [states(k, i, 2), states(k, i, 2) + len*sin(theta)], ...
-                 'LineWidth', 1.5);
-        end
-
-        grid on;
-        axis equal;
-        xlim(xlim_vals);
-        ylim(ylim_vals);
-        xlabel('x');
-        ylabel('y');
-        title(sprintf('%s, t = %.1f s', title_str, time(k)));
-        hold off;
-        drawnow;
-
-        frame = getframe(fig);
-
-        if use_video
-            writeVideo(writer, frame);
-        else
-            imwrite(frame.cdata, fullfile(frame_folder, sprintf('frame_%04d.png', f)));
-        end
-    end
-
-    if use_video
-        close(writer);
-        fprintf('Saved video: %s\n', output_path);
-    else
-        fprintf('VideoWriter unavailable. Saved frames in: %s\n', frame_folder);
-        output_path = frame_folder;
-    end
-
-    close(fig);
+end
+close(fig);
+finish_video_writer_or_frames(writer, use_video_writer, frames_dir, filename);
 end

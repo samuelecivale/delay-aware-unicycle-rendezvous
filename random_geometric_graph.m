@@ -1,31 +1,18 @@
-function [A, positions] = random_geometric_graph(N, radius, domain_size, max_tries, seed)
+function [A, pos] = random_geometric_graph(N, radius, box_size, max_tries, seed)
 %RANDOM_GEOMETRIC_GRAPH Generate a connected random geometric graph.
-%
-% Agents are placed randomly in a square.
-% Two agents are connected if their distance is <= radius.
-
-    if nargin >= 5 && ~isempty(seed)
-        rng(seed);
+if nargin >= 5 && ~isempty(seed)
+    rng(seed);
+end
+for attempt = 1:max_tries
+    pos = box_size * (rand(N,2) - 0.5);
+    A = adjacency_from_positions(pos, radius, 1.0);
+    if is_connected_graph(A)
+        return;
     end
-
-    for attempt = 1:max_tries
-        positions = -domain_size/2 + domain_size * rand(N, 2);
-        A = zeros(N, N);
-
-        for i = 1:N
-            for j = (i+1):N
-                dist = norm(positions(i,:) - positions(j,:));
-                if dist <= radius
-                    A(i, j) = 1;
-                    A(j, i) = 1;
-                end
-            end
-        end
-
-        if is_connected_graph(A)
-            return;
-        end
-    end
-
-    error('Could not generate a connected geometric graph. Try increasing radius.');
+end
+% Fallback: deterministic ring-like geometry.
+theta = linspace(0, 2*pi, N+1)'; theta(end) = [];
+pos = [cos(theta), sin(theta)] * min(radius * 0.45, box_size * 0.35);
+A = adjacency_matrix('ring', N);
+warning('random_geometric_graph:Fallback', 'Could not sample connected geometric graph; returned ring-like fallback.');
 end

@@ -1,21 +1,23 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
 
-VIDEO_DIR="${1:-p1_outputs_matlab/videos}"
+VIDEO_DIR="$1"
 FPS="${2:-15}"
 
-if ! command -v ffmpeg >/dev/null 2>&1; then
-  echo "ffmpeg not found. Install it first."
-  echo "macOS Homebrew: brew install ffmpeg"
-  exit 1
-fi
+for D in "$VIDEO_DIR"/*_frames; do
+    [ -d "$D" ] || continue
 
-for folder in "$VIDEO_DIR"/*_frames; do
-  [ -d "$folder" ] || continue
-  base="$(basename "$folder" _frames)"
-  out="$VIDEO_DIR/$base.mp4"
-  echo "Converting $folder -> $out"
-  ffmpeg -y -framerate "$FPS" -i "$folder/frame_%04d.png" -pix_fmt yuv420p "$out"
+    BASE=$(basename "$D" _frames)
+    OUT="$VIDEO_DIR/$BASE.mp4"
+
+    echo "Converting $D -> $OUT"
+
+    rm -f "$OUT"
+
+    ffmpeg -y \
+      -framerate "$FPS" \
+      -i "$D/frame_%04d.png" \
+      -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p" \
+      -c:v libx264 \
+      -movflags +faststart \
+      "$OUT"
 done
-
-echo "Done."

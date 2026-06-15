@@ -1,27 +1,3 @@
-function D = weighted_degree_matrix(A)
-%WEIGHTED_DEGREE_MATRIX Return the (diagonal) weighted degree matrix of A.
-%   D = weighted_degree_matrix(A) returns a diagonal matrix D where
-%   D(i,i) = sum_j A(i,j). Works for binary or weighted adjacency matrices.
-%
-%   Inputs:
-%     A - square adjacency matrix (NxN)
-%   Outputs:
-%     D - NxN diagonal matrix of node degrees
-
-% basic input validation
-if ~ismatrix(A) || size(A,1) ~= size(A,2)
-    error('weighted_degree_matrix:Input', 'A must be a square matrix.');
-end
-
-% ensure numeric
-A = double(A);
-
-% sum of each row (or column for symmetric graphs)
-deg = sum(A, 2);
-
-% build diagonal matrix
-D = diag(deg);
-end
 % Control of Multi-Robot Systems - Project 2026
 %
 % Plain MATLAB/Octave implementation.
@@ -41,6 +17,7 @@ end
 %   12. full-state delay vs neighbor-only delay
 %   13. unicycle comparison for delay models
 %   14. video generation
+%   15. V3 extensions: edge delays, tau(t), switching graphs, avoidance, packet loss, dynamic unicycles, connectivity maintenance
 
 clear all;
 close all;
@@ -701,6 +678,210 @@ plot_disagreement_curves(time_uni_full, [disagreement_norm_2d(P_uni_full), disag
     {'full-state delay unicycle', 'neighbor-only delay unicycle'}, 'Unicycle delay model comparison');
 save_current_figure(fullfile(FIG_DIR, 'fig_16_unicycle_delay_model.png'));
 
+
+%% Experiment 17 - Non-uniform edge delays tau_ij
+fprintf('\n========== EXPERIMENT 17: EDGE-SPECIFIC DELAYS tau_ij ==========' ); fprintf('\n');
+
+rng(7 + 101);
+Tau_edges = zeros(N,N);
+for i = 1:N
+    for j = i+1:N
+        if A_ring(i,j) > 0
+            tau_ij = (0.10 + (0.75 - 0.10) * rand()) * info_ring.tau_crit;
+            Tau_edges(i,j) = tau_ij;
+            Tau_edges(j,i) = tau_ij;
+        end
+    end
+end
+
+[time_edge_delay, P_edge_delay] = simulate_edge_delayed_consensus_2d(A_ring, P0, Tau_edges, 25.0, 0.01, 1.0);
+summary_edge_delay = summarize_consensus_2d(time_edge_delay, P_edge_delay, 1e-2);
+edge_delay_rows = {};
+for i = 1:N
+    for j = i+1:N
+        if A_ring(i,j) > 0
+            edge_delay_rows(end+1,:) = {sprintf('%d-%d', i, j), Tau_edges(i,j), Tau_edges(i,j)/info_ring.tau_crit};
+        end
+    end
+end
+write_cell_csv(fullfile(TABLE_DIR, 'edge_specific_delays.csv'), ...
+    {'edge','tau_ij','tau_ij_over_tau_crit'}, edge_delay_rows);
+
+fprintf('Final disagreement: %.6e | convergence time: %.4f\n', summary_edge_delay.final_disagreement, summary_edge_delay.convergence_time);
+plot_2d_trajectories(P_edge_delay, '2D rendezvous with non-uniform edge delays', centroid);
+save_current_figure(fullfile(FIG_DIR, 'fig_17_edge_specific_delays_trajectories.png'));
+plot_disagreement_curves(time_edge_delay, disagreement_norm_2d(P_edge_delay), {'edge-specific delays'}, 'Disagreement with non-uniform edge delays');
+save_current_figure(fullfile(FIG_DIR, 'fig_17b_edge_specific_delays_disagreement.png'));
+
+%% Experiment 18 - Time-varying delay tau(t)
+fprintf('\n========== EXPERIMENT 18: TIME-VARYING DELAY tau(t) ==========' ); fprintf('\n');
+
+tau_base = 0.45 * info_ring.tau_crit;
+tau_amp = 0.25 * info_ring.tau_crit;
+tau_period = 8.0;
+tau_time_varying = @(t) tau_base + tau_amp * sin(2*pi*t/tau_period);
+
+[time_tau_var, P_tau_var, tau_history] = simulate_time_varying_delay_consensus_2d(L_ring, P0, tau_time_varying, 25.0, 0.01, 1.0);
+summary_tau_var = summarize_consensus_2d(time_tau_var, P_tau_var, 1e-2);
+fprintf('Final disagreement: %.6e | convergence time: %.4f\n', summary_tau_var.final_disagreement, summary_tau_var.convergence_time);
+plot_scalar_time_series(time_tau_var, tau_history, 'Time-varying communication delay', 'Delay \tau(t) [s]', '', info_ring.tau_crit, '\tau_{crit}');
+save_current_figure(fullfile(FIG_DIR, 'fig_18_time_varying_delay_signal.png'));
+plot_disagreement_curves(time_tau_var, disagreement_norm_2d(P_tau_var), {'time-varying delay'}, 'Disagreement with time-varying delay');
+save_current_figure(fullfile(FIG_DIR, 'fig_18b_time_varying_delay_disagreement.png'));
+plot_2d_trajectories(P_tau_var, '2D rendezvous with time-varying delay', centroid);
+save_current_figure(fullfile(FIG_DIR, 'fig_18c_time_varying_delay_trajectories.png'));
+
+%% Experiment 19 - Switching geometric graph
+fprintf('\n========== EXPERIMENT 19: SWITCHING GEOMETRIC GRAPH ==========' ); fprintf('\n');
+
+switching_radius = 4.5;
+tau_switching = 0.15;
+A_initial_switching = adjacency_from_positions(P0, switching_radius, 1.0);
+print_graph_info(A_initial_switching, 'initial switching geometric graph');
+plot_graph_custom(A_initial_switching, P0, 'Initial switching geometric graph');
+save_current_figure(fullfile(FIG_DIR, 'fig_19_initial_switching_geometric_graph.png'));
+
+[time_switching, P_switching, switching_diag] = simulate_switching_geometric_consensus_2d(P0, switching_radius, tau_switching, 25.0, 0.01, 0.7);
+summary_switching = summarize_consensus_2d(time_switching, P_switching, 1e-2);
+fprintf('Final disagreement: %.6e | convergence time: %.4f\n', summary_switching.final_disagreement, summary_switching.convergence_time);
+plot_2d_trajectories(P_switching, 'Rendezvous with switching geometric graph', centroid);
+save_current_figure(fullfile(FIG_DIR, 'fig_19_switching_geometric_graph_trajectories.png'));
+plot_disagreement_curves(time_switching, disagreement_norm_2d(P_switching), {'switching graph'}, 'Disagreement with switching geometric graph');
+save_current_figure(fullfile(FIG_DIR, 'fig_19b_switching_geometric_graph_disagreement.png'));
+plot_scalar_time_series(time_switching, switching_diag.lambda2, 'Algebraic connectivity during switching-graph rendezvous', '\lambda_2(L(t))');
+save_current_figure(fullfile(FIG_DIR, 'fig_19c_switching_lambda2.png'));
+plot_scalar_time_series(time_switching, switching_diag.edge_count, 'Number of active communication edges over time', 'Number of edges');
+save_current_figure(fullfile(FIG_DIR, 'fig_19d_switching_edge_count.png'));
+
+%% Experiment 20 - Collision avoidance
+fprintf('\n========== EXPERIMENT 20: COLLISION AVOIDANCE ==========' ); fprintf('\n');
+
+[time_collision, states_collision, commands_collision, collision_diag] = simulate_unicycle_with_avoidance( ...
+    L_ring, initial_unicycle_states, tau_uni, 35.0, 0.01, 1.0, ...
+    1.0, 3.0, true, 1.5, 4.0, true, ...
+    true, 0.70, 0.22, [], 0.15, 1.8, 3.0);
+P_collision = states_collision(:,:,1:2);
+summary_collision = summarize_consensus_2d(time_collision, P_collision, 1e-2);
+fprintf('Final disagreement: %.6e | minimum inter-agent distance: %.6f\n', ...
+    summary_collision.final_disagreement, min(collision_diag.min_pair_distance));
+plot_unicycle_trajectories(states_collision, 'Unicycle rendezvous with collision avoidance', true, 450);
+save_current_figure(fullfile(FIG_DIR, 'fig_20_collision_avoidance_trajectories.png'));
+plot_disagreement_curves(time_collision, disagreement_norm_2d(P_collision), {'collision avoidance'}, 'Disagreement with collision avoidance');
+save_current_figure(fullfile(FIG_DIR, 'fig_20b_collision_avoidance_disagreement.png'));
+plot_scalar_time_series(time_collision, collision_diag.min_pair_distance, 'Minimum inter-agent distance over time', 'Minimum distance', '', 0.70, 'safety distance');
+save_current_figure(fullfile(FIG_DIR, 'fig_20c_collision_min_distance.png'));
+
+%% Experiment 21 - Obstacle avoidance
+fprintf('\n========== EXPERIMENT 21: OBSTACLE AVOIDANCE ==========' ); fprintf('\n');
+
+obstacles = struct('center', [0.0, 0.0], 'radius', 0.75, 'influence', 2.0);
+[time_obstacle, states_obstacle, commands_obstacle, obstacle_diag] = simulate_unicycle_with_avoidance( ...
+    L_ring, initial_unicycle_states, tau_uni, 35.0, 0.01, 1.0, ...
+    1.0, 3.0, true, 1.5, 4.0, true, ...
+    true, 0.60, 0.16, obstacles, 0.10, 2.0, 3.0);
+P_obstacle = states_obstacle(:,:,1:2);
+summary_obstacle = summarize_consensus_2d(time_obstacle, P_obstacle, 1e-2);
+fprintf('Final disagreement: %.6e | minimum obstacle clearance: %.6f\n', ...
+    summary_obstacle.final_disagreement, min(obstacle_diag.min_obstacle_clearance));
+plot_2d_trajectories_with_obstacles(P_obstacle, 'Unicycle rendezvous with obstacle avoidance', obstacles, mean(initial_unicycle_states(:,1:2), 1));
+save_current_figure(fullfile(FIG_DIR, 'fig_21_obstacle_avoidance_trajectories.png'));
+plot_disagreement_curves(time_obstacle, disagreement_norm_2d(P_obstacle), {'obstacle avoidance'}, 'Disagreement with obstacle avoidance');
+save_current_figure(fullfile(FIG_DIR, 'fig_21b_obstacle_avoidance_disagreement.png'));
+plot_scalar_time_series(time_obstacle, obstacle_diag.min_obstacle_clearance, 'Minimum obstacle clearance over time', 'Clearance from obstacle boundary', '', 0.0, 'obstacle boundary');
+save_current_figure(fullfile(FIG_DIR, 'fig_21c_obstacle_clearance.png'));
+
+%% Experiment 22 - Packet loss
+fprintf('\n========== EXPERIMENT 22: PACKET LOSS ==========' ); fprintf('\n');
+
+packet_loss_values = [0.0, 0.10, 0.30, 0.50];
+packet_loss_rows = {};
+packet_loss_curves = zeros(length(0:0.01:25.0), length(packet_loss_values));
+packet_loss_labels = cell(1, length(packet_loss_values));
+tau_packet = 0.35 * info_ring.tau_crit;
+P_packet_video = [];
+time_packet_video = [];
+for idx = 1:length(packet_loss_values)
+    p_loss = packet_loss_values(idx);
+    [time_packet, P_packet, packet_diag] = simulate_packet_loss_consensus_2d(A_ring, P0, tau_packet, p_loss, 25.0, 0.01, 1.0, 7 + 200 + idx);
+    summary_packet = summarize_consensus_2d(time_packet, P_packet, 1e-2);
+    packet_loss_curves(:, idx) = disagreement_norm_2d(P_packet);
+    packet_loss_labels{idx} = sprintf('p_{loss}=%.2f', p_loss);
+    packet_loss_rows(end+1,:) = {p_loss, packet_diag.empirical_reception_rate, summary_packet.final_disagreement, summary_packet.convergence_time, summary_packet.max_disagreement};
+    if abs(p_loss - 0.50) < 1e-12
+        P_packet_video = P_packet;
+        time_packet_video = time_packet;
+    end
+end
+write_cell_csv(fullfile(TABLE_DIR, 'packet_loss_sweep.csv'), ...
+    {'p_loss','empirical_reception_rate','final_disagreement','convergence_time','max_disagreement'}, packet_loss_rows);
+plot_disagreement_curves(time_packet, packet_loss_curves, packet_loss_labels, 'Effect of packet loss on delayed rendezvous');
+save_current_figure(fullfile(FIG_DIR, 'fig_22_packet_loss_sweep.png'));
+
+%% Experiment 23 - Dynamic unicycle model
+fprintf('\n========== EXPERIMENT 23: DYNAMIC UNICYCLE WITH ACCELERATION LIMITS ==========' ); fprintf('\n');
+
+[time_dyn_uni, states_dyn_uni, commands_dyn_uni] = simulate_dynamic_unicycle_rendezvous( ...
+    L_ring, initial_unicycle_states, tau_uni, 35.0, 0.01, 1.0, ...
+    2.0, 3.0, 4.0, 1.5, 4.0, 1.2, 6.0, true);
+P_dyn_uni = states_dyn_uni(:,:,1:2);
+summary_dyn_uni = summarize_consensus_2d(time_dyn_uni, P_dyn_uni, 1e-2);
+fprintf('Final disagreement: %.6e | convergence time: %.4f\n', summary_dyn_uni.final_disagreement, summary_dyn_uni.convergence_time);
+plot_2d_trajectories(P_dyn_uni, 'Dynamic unicycle rendezvous with acceleration limits', mean(initial_unicycle_states(:,1:2), 1));
+save_current_figure(fullfile(FIG_DIR, 'fig_23_dynamic_unicycle_trajectories.png'));
+plot_disagreement_curves(time_dyn_uni, disagreement_norm_2d(P_dyn_uni), {'dynamic unicycle'}, 'Disagreement for dynamic unicycle rendezvous');
+save_current_figure(fullfile(FIG_DIR, 'fig_23b_dynamic_unicycle_disagreement.png'));
+plot_dynamic_unicycle_states(time_dyn_uni, states_dyn_uni, commands_dyn_uni, FIG_DIR);
+
+%% Experiment 24 - Connectivity maintenance using lambda_2
+fprintf('\n========== EXPERIMENT 24: CONNECTIVITY MAINTENANCE USING lambda_2 ==========' ); fprintf('\n');
+
+P_connectivity0 = [ ...
+    -3.0,  0.0;
+    -1.8,  0.4;
+    -0.6, -0.2;
+     0.6,  0.2;
+     1.8, -0.4;
+     3.0,  0.0];
+connectivity_radius = 1.65;
+connectivity_tau = 0.05;
+lambda2_threshold = 0.50;
+
+[time_conn_free, P_conn_free, diag_conn_free] = simulate_switching_with_connectivity_maintenance( ...
+    P_connectivity0, connectivity_radius, connectivity_tau, 25.0, 0.01, ...
+    0.3, false, lambda2_threshold, 0.55, 0.0, @split_disturbance_connectivity, 2.5);
+[time_conn_maint, P_conn_maint, diag_conn_maint] = simulate_switching_with_connectivity_maintenance( ...
+    P_connectivity0, connectivity_radius, connectivity_tau, 25.0, 0.01, ...
+    0.3, true, lambda2_threshold, 0.55, 5.0, @split_disturbance_connectivity, 2.5);
+
+connectivity_rows = { ...
+    'without_connectivity_maintenance', min(diag_conn_free.lambda2), diag_conn_free.lambda2(end), diag_conn_free.edge_count(end), disagreement_norm_2d(P_conn_free); ...
+    'with_connectivity_maintenance', min(diag_conn_maint.lambda2), diag_conn_maint.lambda2(end), diag_conn_maint.edge_count(end), disagreement_norm_2d(P_conn_maint)};
+% Replace full disagreement vectors with final disagreement scalars.
+connectivity_rows{1,5} = connectivity_rows{1,5}(end);
+connectivity_rows{2,5} = connectivity_rows{2,5}(end);
+write_cell_csv(fullfile(TABLE_DIR, 'connectivity_maintenance_comparison.csv'), ...
+    {'case','min_lambda2','final_lambda2','final_edges','final_disagreement'}, connectivity_rows);
+plot_2d_trajectories(P_conn_free, 'Switching graph without connectivity maintenance', mean(P_connectivity0,1));
+save_current_figure(fullfile(FIG_DIR, 'fig_24_without_connectivity_maintenance.png'));
+plot_2d_trajectories(P_conn_maint, 'Switching graph with connectivity maintenance', mean(P_connectivity0,1));
+save_current_figure(fullfile(FIG_DIR, 'fig_24b_with_connectivity_maintenance.png'));
+plot_disagreement_curves(time_conn_free, [disagreement_norm_2d(P_conn_free), disagreement_norm_2d(P_conn_maint)], ...
+    {'without maintenance', 'with maintenance'}, 'Connectivity maintenance: disagreement comparison');
+save_current_figure(fullfile(FIG_DIR, 'fig_24c_connectivity_maintenance_disagreement.png'));
+figure;
+plot(time_conn_free, diag_conn_free.lambda2, 'LineWidth', 1.5); hold on;
+plot(time_conn_maint, diag_conn_maint.lambda2, 'LineWidth', 1.5);
+plot([time_conn_free(1), time_conn_free(end)], [lambda2_threshold, lambda2_threshold], '--', 'LineWidth', 1.2);
+grid on; xlabel('Time [s]'); ylabel('\lambda_2(L(t))'); title('Connectivity maintenance through algebraic connectivity');
+legend({'without maintenance','with maintenance','\lambda_2 threshold'}, 'Location', 'best');
+save_current_figure(fullfile(FIG_DIR, 'fig_24d_connectivity_lambda2.png'));
+figure;
+plot(time_conn_free, diag_conn_free.edge_count, 'LineWidth', 1.5); hold on;
+plot(time_conn_maint, diag_conn_maint.edge_count, 'LineWidth', 1.5);
+grid on; xlabel('Time [s]'); ylabel('Number of active edges'); title('Active communication edges during connectivity-maintenance test');
+legend({'without maintenance','with maintenance'}, 'Location', 'best');
+save_current_figure(fullfile(FIG_DIR, 'fig_24e_connectivity_edges.png'));
+
 %% Videos / animation
 if MAKE_VIDEOS
     fprintf('\n========== VIDEO GENERATION ==========\n');
@@ -737,6 +918,40 @@ if MAKE_VIDEOS
     save_delay_model_comparison_animation(P_full_2d, P_neigh_2d, time_full_2d, ...
         fullfile(VIDEO_DIR, 'video_5_full_delay_vs_neighbor_only_delay.mp4'), ...
         'Full-state delay', 'Neighbor-only delay', [-4, 5], [-4, 4], 100);
+
+
+    % V3 extension videos
+    save_2d_dynamic_graph_animation(P_edge_delay, time_edge_delay, ...
+        fullfile(VIDEO_DIR, 'video_6_v3_edge_specific_delays.mp4'), ...
+        'V3 edge-specific delays', [-4, 5], [-4, 4], 110, A_ring, [], centroid);
+
+    save_2d_dynamic_graph_animation(P_tau_var, time_tau_var, ...
+        fullfile(VIDEO_DIR, 'video_7_v3_time_varying_delay.mp4'), ...
+        'V3 time-varying delay', [-4, 5], [-4, 4], 110, A_ring, [], centroid);
+
+    save_2d_dynamic_graph_animation(P_switching, time_switching, ...
+        fullfile(VIDEO_DIR, 'video_8_v3_switching_geometric_graph.mp4'), ...
+        'V3 switching geometric graph', [-4, 5], [-4, 4], 110, [], switching_radius, centroid);
+
+    save_unicycle_extension_animation(states_collision, time_collision, ...
+        fullfile(VIDEO_DIR, 'video_9_v3_collision_avoidance.mp4'), ...
+        'V3 collision avoidance', [-4, 5], [-4, 4], 120, A_ring, [], []);
+
+    save_unicycle_extension_animation(states_obstacle, time_obstacle, ...
+        fullfile(VIDEO_DIR, 'video_10_v3_obstacle_avoidance.mp4'), ...
+        'V3 obstacle avoidance', [-4, 5], [-4, 4], 120, A_ring, [], obstacles);
+
+    save_2d_dynamic_graph_animation(P_packet_video, time_packet_video, ...
+        fullfile(VIDEO_DIR, 'video_11_v3_packet_loss_50_percent.mp4'), ...
+        'V3 packet loss p_{loss}=0.50', [-4, 5], [-4, 4], 110, A_ring, [], centroid);
+
+    save_unicycle_extension_animation(states_dyn_uni, time_dyn_uni, ...
+        fullfile(VIDEO_DIR, 'video_12_v3_dynamic_unicycle.mp4'), ...
+        'V3 dynamic unicycle', [-4, 5], [-4, 4], 120, A_ring, [], []);
+
+    save_connectivity_maintenance_comparison_animation(P_conn_free, P_conn_maint, time_conn_free, ...
+        fullfile(VIDEO_DIR, 'video_13_v3_connectivity_maintenance_comparison.mp4'), ...
+        'No connectivity maintenance', 'With connectivity maintenance', connectivity_radius, [-4, 4], [-3, 3], 120);
 end
 
 %% Final summary
@@ -749,6 +964,7 @@ fprintf('5. Disconnected graphs lead to local, not global, rendezvous.\n');
 fprintf('6. Weighted a_ij modify the Laplacian spectrum and therefore the dynamics.\n');
 fprintf('7. Neighbor-only delay has dynamics xdot = -D x(t) + A x(t-tau), different from -L x(t-tau).\n');
 fprintf('8. Unicycle robots reach rendezvous after converting consensus velocity to v and omega.\n');
+fprintf('9. V3 extensions add edge-specific delays, tau(t), switching graphs, collision/obstacle avoidance, packet loss, dynamic unicycles and lambda_2 connectivity maintenance.\n');
 fprintf('\nMain theoretical relation for full-state delay:\n');
 fprintf('tau_crit = pi / (2 * lambda_max(L))\n');
 fprintf('\nGenerated outputs are in: %s\n', OUTPUT_DIR);

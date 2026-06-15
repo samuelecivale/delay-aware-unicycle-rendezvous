@@ -1,51 +1,46 @@
 function write_cell_csv(filename, headers, rows)
-%WRITE_CELL_CSV Write a cell array table to CSV.
-%
-% headers: 1 x M cell array of strings
-% rows:    R x M cell array with strings/numbers
+%WRITE_CELL_CSV Write a cell array with a header row to CSV.
+[fid, msg] = fopen(filename, 'w');
+if fid < 0
+    error('write_cell_csv:Open', 'Could not open %s: %s', filename, msg);
+end
+cleanup = onCleanup(@() fclose(fid));
+write_row(fid, headers);
+for r = 1:size(rows,1)
+    write_row(fid, rows(r,:));
+end
+end
 
-    [folder, ~, ~] = fileparts(filename);
-    ensure_dir(folder);
-
-    fid = fopen(filename, 'w');
-
-    if fid < 0
-        error('Could not open file for writing: %s', filename);
+function write_row(fid, row)
+for c = 1:numel(row)
+    if c > 1
+        fprintf(fid, ',');
     end
-
-    % Header
-    for j = 1:length(headers)
-        fprintf(fid, '%s', headers{j});
-        if j < length(headers)
-            fprintf(fid, ',');
+    val = row{c};
+    if isnumeric(val) || islogical(val)
+        if isempty(val)
+            s = '';
+        elseif isscalar(val)
+            s = sprintf('%.12g', val);
         else
-            fprintf(fid, '\n');
+            s = mat2str(val);
         end
+    elseif ischar(val)
+        s = val;
+    elseif isstring(val)
+        s = char(val);
+    else
+        s = char(string(val));
     end
-
-    % Rows
-    for i = 1:size(rows, 1)
-        for j = 1:size(rows, 2)
-            value = rows{i, j};
-
-            if isnumeric(value)
-                if isnan(value)
-                    fprintf(fid, 'NaN');
-                else
-                    fprintf(fid, '%.12g', value);
-                end
-            else
-                fprintf(fid, '%s', char(value));
-            end
-
-            if j < size(rows, 2)
-                fprintf(fid, ',');
-            else
-                fprintf(fid, '\n');
-            end
-        end
+    s = strrep(s, '"', '""');
+    if contains_for_csv(s)
+        s = ['"' s '"'];
     end
+    fprintf(fid, '%s', s);
+end
+fprintf(fid, '\n');
+end
 
-    fclose(fid);
-    fprintf('Saved table: %s\n', filename);
+function tf = contains_for_csv(s)
+tf = ~isempty(strfind(s, ',')) || ~isempty(strfind(s, '"')) || ~isempty(strfind(s, sprintf('\n')));
 end

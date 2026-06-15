@@ -1,14 +1,12 @@
-function tc = convergence_time_metric(time, d, eps_value)
-%CONVERGENCE_TIME_METRIC First time after which d remains below eps.
-%
-% Returns NaN if convergence is not reached.
-
-    tc = NaN;
-
-    for k = 1:length(d)
-        if all(d(k:end) < eps_value)
-            tc = time(k);
-            return;
-        end
+function tc = convergence_time_metric(time, disagreement, threshold)
+%CONVERGENCE_TIME_METRIC First time after which disagreement stays below threshold.
+time = time(:);
+disagreement = disagreement(:);
+tc = NaN;
+for k = 1:length(time)
+    if all(disagreement(k:end) <= threshold)
+        tc = time(k);
+        return;
     end
+end
 end

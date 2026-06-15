@@ -1,92 +1,34 @@
-function output_path = save_2d_animation(P, time, output_path, title_str, xlim_vals, ylim_vals, num_frames, show_centroid)
-%SAVE_2D_ANIMATION Save 2D multi-agent animation.
-%
-% If VideoWriter is available, saves video.
-% Otherwise, saves PNG frames in a folder.
-
-
-    try
-        make_videos = evalin('base', 'MAKE_VIDEOS');
-    catch
-        make_videos = true;
+function save_2d_animation(P, time, filename, title_str, xlim_vals, ylim_vals, num_frames, show_edges)
+%SAVE_2D_ANIMATION Save 2D consensus animation.
+if nargin < 8, show_edges = false; end
+if nargin < 7, num_frames = 100; end
+P = double(P); time = time(:); N = size(P,2); K = size(P,1);
+frames = frame_indices_for_animation(K, num_frames);
+[writer, frames_dir, use_video_writer] = make_video_writer_or_frames(filename, 15);
+fig = figure('Visible','off');
+for f = 1:length(frames)
+    k = frames(f);
+    clf; hold on;
+    for i = 1:N
+        plot(P(1:k,i,1), P(1:k,i,2), 'LineWidth', 1.0);
     end
-
-    if ~make_videos
-        fprintf('Skipping video generation: MAKE_VIDEOS=false.\n');
-        return;
-    end
-
-    N = size(P, 2);
-    K = length(time);
-    frame_indices = round(linspace(1, K, num_frames));
-
-    [folder, name, ext] = fileparts(output_path);
-    ensure_dir(folder);
-
-    use_video = (exist('VideoWriter', 'class') == 8) || (exist('VideoWriter', 'file') == 2);
-
-    if use_video
-        try
-            writer = VideoWriter(output_path, 'MPEG-4');
-        catch
-            output_path = fullfile(folder, [name '.avi']);
-            writer = VideoWriter(output_path, 'Motion JPEG AVI');
-        end
-        writer.FrameRate = 15;
-        open(writer);
-    else
-        frame_folder = fullfile(folder, [name '_frames']);
-        ensure_dir(frame_folder);
-    end
-
-    fig = figure('Visible', 'off');
-
-    for f = 1:length(frame_indices)
-        k = frame_indices(f);
-
-        clf(fig);
-        hold on;
-
+    if show_edges
         for i = 1:N
-            x = squeeze(P(1:k, i, 1));
-            y = squeeze(P(1:k, i, 2));
-
-            plot(x, y, 'LineWidth', 1.2);
-            plot(P(k, i, 1), P(k, i, 2), 'o', 'MarkerSize', 6);
-        end
-
-        if show_centroid
-            P0 = squeeze(P(1, :, :));
-            c = mean(P0, 1);
-            plot(c(1), c(2), 'x', 'MarkerSize', 10, 'LineWidth', 1.5);
-        end
-
-        grid on;
-        axis equal;
-        xlim(xlim_vals);
-        ylim(ylim_vals);
-        xlabel('x');
-        ylabel('y');
-        title(sprintf('%s, t = %.1f s', title_str, time(k)));
-        hold off;
-        drawnow;
-
-        frame = getframe(fig);
-
-        if use_video
-            writeVideo(writer, frame);
-        else
-            imwrite(frame.cdata, fullfile(frame_folder, sprintf('frame_%04d.png', f)));
+            for j = i+1:N
+                plot([P(k,i,1) P(k,j,1)], [P(k,i,2) P(k,j,2)], ':', 'LineWidth', 0.5);
+            end
         end
     end
-
-    if use_video
-        close(writer);
-        fprintf('Saved video: %s\n', output_path);
+    plot(P(k,:,1), P(k,:,2), 'o', 'MarkerSize', 7, 'LineWidth', 1.2);
+    grid on; axis equal; xlim(xlim_vals); ylim(ylim_vals);
+    xlabel('x'); ylabel('y'); title(sprintf('%s, t = %.1f s', title_str, time(k)));
+    drawnow;
+    if use_video_writer
+        writeVideo(writer, getframe(fig));
     else
-        fprintf('VideoWriter unavailable. Saved frames in: %s\n', frame_folder);
-        output_path = frame_folder;
+        print(fig, fullfile(frames_dir, sprintf('frame_%04d.png', f)), '-dpng', '-r120');
     end
-
-    close(fig);
+end
+close(fig);
+finish_video_writer_or_frames(writer, use_video_writer, frames_dir, filename);
 end

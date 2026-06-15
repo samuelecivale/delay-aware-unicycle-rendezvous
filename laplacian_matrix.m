@@ -1,6 +1,5 @@
 function L = laplacian_matrix(A)
-%LAPLACIAN_MATRIX Compute weighted graph Laplacian L = D - A.
-    degrees = sum(A, 2);
-    D = diag(degrees);
-    L = D - A;
+%LAPLACIAN_MATRIX Return L = D - A for a binary or weighted graph.
+A = double(A);
+L = weighted_degree_matrix(A) - A;
 end

@@ -1,28 +1,19 @@
 function [time, P] = simulate_delayed_consensus_2d(L, P0, tau, T, dt, gain)
-%SIMULATE_DELAYED_CONSENSUS_2D Simulate Pdot(t) = -gain * L * P(t - tau).
-%
-% P is K x N x 2.
-
-    if nargin < 6
-        gain = 1.0;
-    end
-
-    N = size(P0, 1);
-
-    time = 0:dt:T;
-    K = length(time);
-
-    P = zeros(K, N, 2);
-    P(1, :, :) = P0;
-
-    delay_steps = round(tau / dt);
-
-    for k = 1:(K-1)
-        delayed_index = max(1, k - delay_steps);
-
-        P_delay = squeeze(P(delayed_index, :, :));
-        dP = -gain * (L * P_delay);
-
-        P(k+1, :, :) = squeeze(P(k, :, :)) + dt * dP;
-    end
+%SIMULATE_DELAYED_CONSENSUS_2D Full-state delayed consensus in 2D.
+if nargin < 6, gain = 1.0; end
+L = double(L);
+P0 = double(P0);
+time = (0:dt:T)';
+K = length(time);
+N = size(P0,1);
+P = zeros(K, N, 2);
+P(1,:,:) = reshape(P0, [1, N, 2]);
+delay_steps = max(0, round(tau / dt));
+for k = 1:K-1
+    idx = max(1, k - delay_steps);
+    Pdel = squeeze(P(idx,:,:));
+    dP = -gain * (L * Pdel);
+    P_next = squeeze(P(k,:,:)) + dt * dP;
+    P(k+1,:,:) = reshape(P_next, [1, N, 2]);
+end
 end
