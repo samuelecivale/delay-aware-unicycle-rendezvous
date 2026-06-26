@@ -12,29 +12,29 @@ All the code is contained in a single self-contained MATLAB file:
 
 ## 1. Model
 
-Each agent `i` is a unicycle:
+Each agent $i$ is a unicycle:
 
-```
-xdot_i     = v_i * cos(theta_i)
-ydot_i     = v_i * sin(theta_i)
-thetadot_i = omega_i
-```
+$$
+\dot{x}_i = v_i \cos\theta_i, \qquad
+\dot{y}_i = v_i \sin\theta_i, \qquad
+\dot{\theta}_i = \omega_i
+$$
 
 The desired Cartesian velocity is produced by a **delayed consensus** law and then realized
 on the unicycle. Two delay models are included:
 
-- **full_state**: `u(t) = -k * L * p(t - tau)`
-- **neighbor_only**: `u_i(t) = -k * sum_j a_ij * ( p_i(t) - p_j(t - tau) )`
+- **full_state:** $\ u(t) = -kLp(t - \tau)$
+- **neighbor_only:** $\ u_i(t) = -k \sum_{j} a_{ij}\\bigl( p_i(t) - p_j(t - \tau) \bigr)$
 
-where `L` is the Laplacian of the communication graph and `k` is the consensus gain.
+where $L$ is the Laplacian of the communication graph and $k$ is the consensus gain.
 
 ### Critical delay
 
 For the linear full-state single-integrator reference model:
 
-```
-tau_crit = pi / ( 2 * k * lambda_max(L) )
-```
+$$
+\tau_{\mathrm{crit}} = \frac{\pi}{2k\lambda_{\max}(L)}
+$$
 
 This is the **reference value** used throughout the project. In the unicycle case the
 nonlinear heading dynamics, saturation and numerical integration may make the observed
@@ -72,8 +72,8 @@ With `RUN_BOTH_CONTROLLERS = true` (current setting) the entire experiment suite
 | `dt` | 0.02 s | integration step |
 | `eps_convergence` | 1e-2 | threshold for convergence time |
 
-Base graph: 6-node ring, with `lambda_max(L) = 4`, `lambda_2(L) = 1`,
-giving `tau_crit ≈ 0.3927 s`.
+Base graph: 6-node ring, with $\lambda_{\max}(L) = 4$, $\lambda_2(L) = 1$,
+giving $\tau_{\mathrm{crit}} \approx 0.3927\ \mathrm{s}$.
 
 ---
 
@@ -127,8 +127,8 @@ most significant tests**, for both controllers:
 | ID | Content | File |
 |----|---------|------|
 | U1 | Baseline full-state rendezvous (converges) | `u01_full_state.mp4` |
-| U3 | Supra-critical comparison at 1.2·`tau_crit`: full-state diverges | `u03_full_state_supracritical.mp4` |
-| U3 | Supra-critical comparison at 1.2·`tau_crit`: neighbor-only stable | `u03_neighbor_only_supracritical.mp4` |
+| U3 | Supra-critical comparison at $1.2\,\tau_{\mathrm{crit}}$: full-state diverges | `u03_full_state_supracritical.mp4` |
+| U3 | Supra-critical comparison at $1.2\,\tau_{\mathrm{crit}}$: neighbor-only stable | `u03_neighbor_only_supracritical.mp4` |
 | U8 | Disconnected graph: cluster rendezvous | `u08_disconnected_full_state.mp4`, `u08_disconnected_neighbor_only.mp4` |
 | U15 | Leader-follower with moving target | `u15_leader_follower.mp4` |
 | U16 | Rigid formation | `u16_rigid_formation.mp4` |
@@ -152,7 +152,7 @@ recreated on the next run.
 
 - **U1** — Baseline full-state: rendezvous with sub-critical delay.
 - **U2** — Baseline neighbor-only at the same delay.
-- **U3** — Sweep of `tau` (0 → 2·`tau_crit`): full-state vs neighbor-only. Shows the
+- **U3** — Sweep of $\tau$ (from $0$ to $2\,\tau_{\mathrm{crit}}$): full-state vs neighbor-only. Shows the
   divergence of full-state above the threshold and the higher robustness of neighbor-only.
 - **U4** — Topology comparison (path, ring, star, complete).
 - **U5** — Ring graph with random weights.
@@ -160,8 +160,8 @@ recreated on the next run.
 - **U7** — Random geometric graphs, varying the communication radius.
 - **U8** — Disconnected graph: cluster rendezvous instead of global rendezvous.
 - **U9** — Saturated vs unsaturated commands.
-- **U10** — Sensitivity to the integration step `dt`.
-- **U11** — Effect of the gain `k` on `tau_crit`.
+- **U10** — Sensitivity to the integration step $dt$.
+- **U11** — Effect of the gain $k$ on $\tau_{\mathrm{crit}}$.
 - **U12** — Sensitivity to the initial heading.
 - **U13** — Complete graphs, varying size and edge weight.
 
@@ -173,9 +173,9 @@ recreated on the next run.
 - **U17** — Robustness to noise (measurement, command, process).
 - **U18** — Robustness to packet loss.
 - **U19** — Obstacle avoidance + inter-robot safety (continuous repulsive terms).
-- **U20** — Time-varying geometric graph with monitoring of `lambda_2(L(t))`.
-- **U21** — Edge-dependent delays (different `tau_ij` for each edge).
-- **U22** — Time-varying sinusoidal delays `tau(t)`, including a profile that crosses the threshold.
+- **U20** — Time-varying geometric graph with monitoring of $\lambda_2(L(t))$.
+- **U21** — Edge-dependent delays (different $\tau_{ij}$ for each edge).
+- **U22** — Time-varying sinusoidal delays $\tau(t)$, including a profile that crosses the threshold.
 - **U23** — Clearance formation via attractive/repulsive potential fields.
 - **U24** — Switching obstacle avoidance (local tangential controller).
 - **U25** — Delay initial-history protocol (constant vs zero).
@@ -187,20 +187,20 @@ recreated on the next run.
 
 Each test writes one or more CSVs in `tables/` with the main metrics, including: final and
 maximum disagreement (RMS), convergence time, final centroid, mean path length, and — where
-relevant — `tau`, `tau/tau_crit`, `lambda_2`, `lambda_max`, practical-stability flag. File
+relevant — $\tau$, $\tau/\tau_{\mathrm{crit}}$, $\lambda_2$, $\lambda_{\max}$, practical-stability flag. File
 names follow the scheme `uNN_<description>.csv`.
 
 ---
 
 ## 9. Metrics
 
-- **RMS disagreement**: root-mean-square deviation of the positions from the centroid;
+- **RMS disagreement:** root-mean-square deviation of the positions from the centroid;
   measures how tightly the group is gathered.
-- **Convergence time**: first instant beyond which the disagreement stays below
-  `eps_convergence` until the end.
-- **Practical stability**: flag based on the final disagreement value and the slope of the
+- **Convergence time:** first instant beyond which the disagreement stays below
+  $\varepsilon_{\mathrm{conv}}$ until the end.
+- **Practical stability:** flag based on the final disagreement value and the slope of the
   tail of the curve.
-- **Mean path length**: total distance traveled, averaged over the robots.
+- **Mean path length:** total distance traveled, averaged over the robots.
 
 ---
 
@@ -209,4 +209,5 @@ names follow the scheme `uNN_<description>.csv`.
 - The random number generator seed is reset in a controlled way (`safe_rng_local`) to make
   the results reproducible across runs.
 - The `tau_crit` values used in the tests always refer to the linear full-state model; they
-  serve as a reference threshold for the unicycle and neighbor-only cases as well.
+  serve as a reference threshold for the unicycle and neighbor-only cases as well, i.e.
+  $\tau_{\mathrm{crit}} = \pi / \bigl(2\,k\,\lambda_{\max}(L)\bigr)$.
