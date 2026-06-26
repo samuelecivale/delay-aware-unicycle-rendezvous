@@ -1,3 +1,0 @@
-model,tau,final_disagreement,convergence_time,initial_average,final_average
-full_state_delay,0.294524311274,2.81881571347e-11,6.42,0.166666666667,0.166666666667
-neighbor_only_delay,0.294524311274,1.78838051688e-11,8.41,0.166666666667,0.166666666667

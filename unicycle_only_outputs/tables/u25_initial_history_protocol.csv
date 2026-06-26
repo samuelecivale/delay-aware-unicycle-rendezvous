@@ -1,0 +1,5 @@
+"extension","model","history_mode","tau","tau_over_taucrit_reference","final_centroid_x","final_centroid_y","final_disagreement","max_disagreement","convergence_time","path_length_mean"
+"initial_history_protocol","full_state","constant","0.314159265359","0.8","0.260208312214","0.0863006663227","0.627919538959","3.40444970264","NaN","45.7741187294"
+"initial_history_protocol","full_state","zero_prehistory","0.314159265359","0.8","0.260208312214","0.0863006663251","0.627919539013","3.40444970264","NaN","45.2941187294"
+"initial_history_protocol","neighbor_only","constant","0.314159265359","0.8","0.270222997453","0.129725017251","9.52917868065e-09","3.40444970264","8.64","4.1432668249"
+"initial_history_protocol","neighbor_only","zero_prehistory","0.314159265359","0.8","0.257620645524","0.13677860506","9.59901322011e-09","3.40444970264","8.56","4.06089393882"

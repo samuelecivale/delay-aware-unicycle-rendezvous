@@ -1,3 +1,0 @@
-case,min_lambda2,final_lambda2,final_edges,final_disagreement
-without_connectivity_maintenance,-1.11022302463e-16,-1.11022302463e-16,6,20.0104600457
-with_connectivity_maintenance,0.267949192431,6,15,1.81909269889e-13

@@ -1,0 +1,2 @@
+"extension","model","tau","tau_over_taucrit","obstacle_x","obstacle_y","obstacle_radius","safety_distance","min_pairwise_distance","min_obstacle_clearance","final_disagreement","path_length_mean"
+"obstacle_collision_avoidance","neighbor_only","0.157079632679","0.4","0","0","0.75","0.7","0.399393202653","0.519631817821","1.45623080485","3.26210795319"

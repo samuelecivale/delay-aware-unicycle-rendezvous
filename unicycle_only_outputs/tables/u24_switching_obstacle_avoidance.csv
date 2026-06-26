@@ -1,0 +1,3 @@
+"extension","model","tau","tau_over_taucrit_reference","min_obstacle_clearance","total_avoidance_activations","final_disagreement","max_disagreement","convergence_time","path_length_mean"
+"switching_obstacle_avoidance","full_state","0.157079632679","0.4","0.132865984916","9928","1.22516459273","3.40444970264","NaN","42.659581968"
+"switching_obstacle_avoidance","neighbor_only","0.157079632679","0.4","0.120968371226","10129","1.17947625723","3.40444970264","NaN","40.8942641746"
