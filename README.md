@@ -1,213 +1,269 @@
-# Control of Multi-Robot Systems — Unicycle Rendezvous with Communication Delay
+# Delay-Aware Rendezvous of Nonholonomic Multi-Robot Systems
 
-Project 2026. Study of the **rendezvous (consensus)** of a group of **unicycle** robots
-under **communication delay**, with analysis of the critical delay `tau_crit` and a set of
-extensions (formations, leader-follower, obstacle avoidance, switching graphs, robustness
-to noise and packet loss).
+![MATLAB](https://img.shields.io/badge/MATLAB-Multi--Robot%20Control-orange)
+![Control](https://img.shields.io/badge/Control-Distributed-blue)
+![Graph Theory](https://img.shields.io/badge/Graph%20Theory-Consensus-green)
+![Robotics](https://img.shields.io/badge/Robotics-Networked%20Systems-purple)
 
-All the code is contained in a single self-contained MATLAB file:
-`main_unicycle.m` (the `main` function plus all local helper functions).
+A simulation framework for studying **distributed rendezvous and coordination of nonholonomic unicycle robots under communication delays**.
+
+The project investigates how network latency interacts with graph topology, controller gain and robot dynamics, comparing different delay models and testing the controllers under increasingly realistic communication and coordination conditions.
 
 ---
 
-## 1. Model
+## Problem
 
-Each agent $i$ is a unicycle:
+Each robot follows unicycle dynamics
 
-$$
-\dot{x}_i = v_i \cos\theta_i, \qquad
-\dot{y}_i = v_i \sin\theta_i, \qquad
+\[
+\dot{x}_i = v_i\cos\theta_i
+\]
+
+\[
+\dot{y}_i = v_i\sin\theta_i
+\]
+
+\[
 \dot{\theta}_i = \omega_i
-$$
+\]
 
-The desired Cartesian velocity is produced by a **delayed consensus** law and then realized
-on the unicycle. Two delay models are included:
+while its control input depends only on information exchanged through a communication graph.
 
-- **full_state:** $\ u(t) = -kLp(t - \tau)$
-- **neighbor_only:** $\ u_i(t) = -k \sum_{j} a_{ij}\\bigl( p_i(t) - p_j(t - \tau) \bigr)$
+The central question is:
 
-where $L$ is the Laplacian of the communication graph and $k$ is the consensus gain.
-
-### Critical delay
-
-For the linear full-state single-integrator reference model:
-
-$$
-\tau_{\mathrm{crit}} = \frac{\pi}{2k\lambda_{\max}(L)}
-$$
-
-This is the **reference value** used throughout the project. In the unicycle case the
-nonlinear heading dynamics, saturation and numerical integration may make the observed
-behavior slightly different around the boundary.
+> **How much communication delay can a distributed rendezvous controller tolerate before collective stability is lost?**
 
 ---
 
-## 2. Controllers
+## Delay-Aware Consensus
 
-The main runs the study with two controller families, selectable via `CONTROLLER_TYPE`:
+For a linear consensus reference model
 
-- **`paper`** (default): nonholonomic controller inspired by the rendezvous/formation
-  papers based on potential fields. The delayed interaction force is projected onto the
-  admissible direction of motion of the unicycle.
-- **`vector_field`**: the previous project controller. The delayed consensus field produces
-  a desired Cartesian velocity, which is then tracked by a heading controller.
+\[
+\dot{p}(t)
+=
+-kLp(t-\tau)
+\]
 
-With `RUN_BOTH_CONTROLLERS = true` (current setting) the entire experiment suite is executed
-**twice**, once per controller, saving the outputs in separate folders.
+the theoretical critical delay is
+
+\[
+\tau_{crit}
+=
+\frac{\pi}
+{2k\lambda_{max}(L)}
+\]
+
+where:
+
+- \(k\) is the consensus gain;
+- \(L\) is the graph Laplacian;
+- \(\lambda_{max}(L)\) is its largest eigenvalue.
+
+For the default six-agent ring topology:
+
+\[
+\lambda_{max}(L)=4
+\]
+
+which gives
+
+\[
+\tau_{crit}\approx0.3927\;s
+\]
+
+for unit consensus gain.
+
+The simulations use this threshold as a theoretical reference and examine what happens below, near and above it.
 
 ---
 
-## 3. Main parameters
+## Communication Delay Models
 
-| Parameter | Value | Meaning |
-|-----------|-------|---------|
-| `N` | 6 | number of robots (base case) |
-| `params.k` | 1.0 | consensus gain |
-| `params.kv` | 1.0 | linear velocity gain |
-| `params.ktheta` | 3.0 | heading gain |
-| `params.vmax` | 1.5 | linear velocity saturation |
-| `params.omegamax` | 4.0 | angular velocity saturation |
-| `params.saturate` | true | enables command saturation |
-| `T` | 35.0 s | time horizon (some tests use different values) |
-| `dt` | 0.02 s | integration step |
-| `eps_convergence` | 1e-2 | threshold for convergence time |
+Two delay models are compared.
 
-Base graph: 6-node ring, with $\lambda_{\max}(L) = 4$, $\lambda_2(L) = 1$,
-giving $\tau_{\mathrm{crit}} \approx 0.3927\ \mathrm{s}$.
+### Full-State Delay
+
+Each robot acts on a fully delayed consensus state:
+
+\[
+u(t)=-kLp(t-\tau)
+\]
+
+This model maps directly to the classical delayed-consensus stability analysis.
+
+### Neighbor-Only Delay
+
+Each robot knows its own current state but receives delayed measurements from its neighbors:
+
+\[
+u_i(t)
+=
+-k\sum_j a_{ij}
+\left(
+p_i(t)-p_j(t-\tau)
+\right)
+\]
+
+This model is closer to a distributed robotic implementation, where local proprioception is immediate while network information arrives late.
 
 ---
 
-## 4. How to run
+## Nonholonomic Controllers
 
-Requirements: **MATLAB R2025** (tested). Video writing uses `VideoWriter`
-(MPEG-4 profile, with Motion JPEG AVI fallback).
+The delayed Cartesian interaction law cannot be directly applied to a unicycle.
 
-From the project folder:
+The framework therefore contains two controller families.
+
+### Potential-Field / Paper Controller
+
+The interaction vector is projected onto the robot's admissible heading direction, respecting the nonholonomic structure.
+
+### Vector-Field Controller
+
+The delayed consensus law defines a desired planar velocity vector.
+
+The unicycle then:
+
+1. computes the desired motion direction;
+2. aligns its heading with that direction;
+3. advances with a bounded forward velocity.
+
+This separates distributed coordination from low-level nonholonomic steering.
+
+---
+
+## Experimental Campaign
+
+The simulator does more than reproduce a nominal rendezvous experiment.
+
+It evaluates the controller under:
+
+- subcritical and supercritical delays;
+- different graph topologies;
+- weighted, random and geometric graphs;
+- disconnected networks;
+- gain and timestep variations;
+- actuator saturation;
+- leader-follower coordination;
+- rigid formations;
+- measurement noise;
+- packet loss;
+- collision avoidance;
+- obstacle avoidance;
+- switching communication graphs;
+- edge-dependent delays;
+- time-varying delays.
+
+The goal is to distinguish behavior caused by the **distributed control law** from behavior caused by network structure or communication imperfections.
+
+---
+
+## Graph-Theoretic Analysis
+
+For every communication graph the framework evaluates spectral properties of the Laplacian, including:
+
+\[
+\lambda_2(L)
+\]
+
+which measures algebraic connectivity, and
+
+\[
+\lambda_{max}(L)
+\]
+
+which determines the theoretical full-state delay bound.
+
+This makes it possible to directly relate topology to both convergence and delay robustness.
+
+---
+
+## Beyond Rendezvous
+
+The same distributed framework is extended to more complex tasks:
+
+### Leader-Follower Coordination
+
+A designated robot influences the motion of the remaining agents.
+
+### Rigid Formation Control
+
+Agents converge while preserving desired pairwise offsets.
+
+### Collision and Obstacle Avoidance
+
+Repulsive terms are added to the nominal distributed interaction law.
+
+### Switching Graphs
+
+Communication edges change dynamically during the simulation.
+
+These scenarios test whether the core delay-aware controller remains useful beyond ideal fixed-graph rendezvous.
+
+---
+
+## Running the Project
+
+Open MATLAB in the repository directory and run:
 
 ```matlab
-main_unicycle
+main
 ```
 
-Useful flags at the top of the file:
+The main script runs the configured experiment suite and generates:
 
-- `MAKE_FIGURES` — generate and save the PNG figures
-- `MAKE_VIDEOS` — generate the trajectory videos (see Section 6)
-- `RUN_BOTH_CONTROLLERS` — run both `paper` and `vector_field`
-- `CLOSE_FIGURES_AFTER_SAVE` — close figures after saving
+- trajectory plots;
+- convergence metrics;
+- graph statistics;
+- CSV tables;
+- optional videos.
 
----
+Results are organized under:
 
-## 5. Output structure
-
-Outputs are separated per controller:
-
-```
+```text
 unicycle_only_outputs/
-├── paper/
-│   ├── figures/   PNGs of trajectories, disagreement curves, summaries
-│   ├── tables/    CSVs with the metrics of each test
-│   └── videos/    MP4 animations (selected tests only)
-└── vector_field/
-    ├── figures/
-    ├── tables/
-    └── videos/
 ```
 
-> Note: any `figures/`, `tables/`, `videos/` folders directly under
-> `unicycle_only_outputs/` (outside `paper/` and `vector_field/`) are leftovers from old
-> runs and can be deleted.
+---
+
+## Repository Structure
+
+```text
+.
+├── main.m
+├── unicycle_only_outputs/
+│   ├── figures/
+│   ├── tables/
+│   ├── videos/
+│   ├── paper/
+│   └── vector_field/
+├── README.md
+└── ...
+```
 
 ---
 
-## 6. Videos
+## What This Project Demonstrates
 
-To keep the outputs lean (useful for the presentation), videos are generated **only for the
-most significant tests**, for both controllers:
-
-| ID | Content | File |
-|----|---------|------|
-| U1 | Baseline full-state rendezvous (converges) | `u01_full_state.mp4` |
-| U3 | Supra-critical comparison at $1.2\,\tau_{\mathrm{crit}}$: full-state diverges | `u03_full_state_supracritical.mp4` |
-| U3 | Supra-critical comparison at $1.2\,\tau_{\mathrm{crit}}$: neighbor-only stable | `u03_neighbor_only_supracritical.mp4` |
-| U8 | Disconnected graph: cluster rendezvous | `u08_disconnected_full_state.mp4`, `u08_disconnected_neighbor_only.mp4` |
-| U15 | Leader-follower with moving target | `u15_leader_follower.mp4` |
-| U16 | Rigid formation | `u16_rigid_formation.mp4` |
-| U19 | Obstacle and collision avoidance | `u19_obstacle_collision_avoidance.mp4` |
-| U20 | Time-varying geometric (switching) graph | `u20_switching_graph.mp4` |
-
-All other tests produce figures and tables only.
-
-### Automatic skip
-
-`save_unicycle_animation_local` skips generation if the video (or its `.avi` fallback)
-**already exists** on disk. This lets you re-run the main without regenerating videos that
-were already produced. If writing a video fails, the partial file is removed so it can be
-recreated on the next run.
+- Multi-Robot Systems
+- Distributed Control
+- Networked Robotics
+- Consensus Algorithms
+- Communication Delay
+- Graph Laplacians
+- Spectral Graph Theory
+- Nonholonomic Control
+- Formation Control
+- Leader-Follower Systems
+- Robustness Analysis
+- Switching Networks
+- Packet Loss and Measurement Noise
 
 ---
 
-## 7. List of tests
+## Key Takeaway
 
-### Baseline study and delay analysis
+Communication latency is not simply an implementation detail in distributed robotics: it fundamentally interacts with the spectrum of the communication graph.
 
-- **U1** — Baseline full-state: rendezvous with sub-critical delay.
-- **U2** — Baseline neighbor-only at the same delay.
-- **U3** — Sweep of $\tau$ (from $0$ to $2\,\tau_{\mathrm{crit}}$): full-state vs neighbor-only. Shows the
-  divergence of full-state above the threshold and the higher robustness of neighbor-only.
-- **U4** — Topology comparison (path, ring, star, complete).
-- **U5** — Ring graph with random weights.
-- **U6** — Random connected graphs (statistics over several trials).
-- **U7** — Random geometric graphs, varying the communication radius.
-- **U8** — Disconnected graph: cluster rendezvous instead of global rendezvous.
-- **U9** — Saturated vs unsaturated commands.
-- **U10** — Sensitivity to the integration step $dt$.
-- **U11** — Effect of the gain $k$ on $\tau_{\mathrm{crit}}$.
-- **U12** — Sensitivity to the initial heading.
-- **U13** — Complete graphs, varying size and edge weight.
-
-### Extensions
-
-- **U14** — Rendezvous to an arbitrary target point.
-- **U15** — Leader-follower with a moving target.
-- **U16** — Rigid formation (consensus on shifted coordinates).
-- **U17** — Robustness to noise (measurement, command, process).
-- **U18** — Robustness to packet loss.
-- **U19** — Obstacle avoidance + inter-robot safety (continuous repulsive terms).
-- **U20** — Time-varying geometric graph with monitoring of $\lambda_2(L(t))$.
-- **U21** — Edge-dependent delays (different $\tau_{ij}$ for each edge).
-- **U22** — Time-varying sinusoidal delays $\tau(t)$, including a profile that crosses the threshold.
-- **U23** — Clearance formation via attractive/repulsive potential fields.
-- **U24** — Switching obstacle avoidance (local tangential controller).
-- **U25** — Delay initial-history protocol (constant vs zero).
-- **U26** — Summary table of the extensions.
-
----
-
-## 8. Tables (CSV)
-
-Each test writes one or more CSVs in `tables/` with the main metrics, including: final and
-maximum disagreement (RMS), convergence time, final centroid, mean path length, and — where
-relevant — $\tau$, $\tau/\tau_{\mathrm{crit}}$, $\lambda_2$, $\lambda_{\max}$, practical-stability flag. File
-names follow the scheme `uNN_<description>.csv`.
-
----
-
-## 9. Metrics
-
-- **RMS disagreement:** root-mean-square deviation of the positions from the centroid;
-  measures how tightly the group is gathered.
-- **Convergence time:** first instant beyond which the disagreement stays below
-  $\varepsilon_{\mathrm{conv}}$ until the end.
-- **Practical stability:** flag based on the final disagreement value and the slope of the
-  tail of the curve.
-- **Mean path length:** total distance traveled, averaged over the robots.
-
----
-
-## 10. Notes
-
-- The random number generator seed is reset in a controlled way (`safe_rng_local`) to make
-  the results reproducible across runs.
-- The `tau_crit` values used in the tests always refer to the linear full-state model; they
-  serve as a reference threshold for the unicycle and neighbor-only cases as well, i.e.
-  $\tau_{\mathrm{crit}} = \pi / \bigl(2\,k\,\lambda_{\max}(L)\bigr)$.
+This project connects the **theoretical delay stability boundary** of consensus systems with the behavior of nonlinear unicycle agents under realistic network imperfections, providing a systematic experimental study of when distributed coordination succeeds — and when it fails.
