@@ -15,17 +15,17 @@ The project investigates how network latency interacts with graph topology, cont
 
 Each robot follows unicycle dynamics
 
-\[
+$$
 \dot{x}_i = v_i\cos\theta_i
-\]
+$$
 
-\[
+$$
 \dot{y}_i = v_i\sin\theta_i
-\]
+$$
 
-\[
+$$
 \dot{\theta}_i = \omega_i
-\]
+$$
 
 while its control input depends only on information exchanged through a communication graph.
 
@@ -39,38 +39,34 @@ The central question is:
 
 For a linear consensus reference model
 
-\[
-\dot{p}(t)
-=
--kLp(t-\tau)
-\]
+
+$$\dot{p}(t)
+=-kLp(t-\tau)$$
+
 
 the theoretical critical delay is
 
-\[
-\tau_{crit}
-=
-\frac{\pi}
-{2k\lambda_{max}(L)}
-\]
+$$
+\tau_{crit} = \frac{\pi}{2k\lambda_{max}(L)}
+$$
 
 where:
 
-- \(k\) is the consensus gain;
-- \(L\) is the graph Laplacian;
-- \(\lambda_{max}(L)\) is its largest eigenvalue.
+- $$\(k\)$$ is the consensus gain;
+- $$\(L\)$$ is the graph Laplacian;
+- $$\(\lambda_{max}(L)\)$$ is its largest eigenvalue.
 
 For the default six-agent ring topology:
 
-\[
+$$
 \lambda_{max}(L)=4
-\]
+$$
 
 which gives
 
-\[
+$$
 \tau_{crit}\approx0.3927\;s
-\]
+$$
 
 for unit consensus gain.
 
@@ -86,9 +82,9 @@ Two delay models are compared.
 
 Each robot acts on a fully delayed consensus state:
 
-\[
+$$
 u(t)=-kLp(t-\tau)
-\]
+$$
 
 This model maps directly to the classical delayed-consensus stability analysis.
 
@@ -96,14 +92,7 @@ This model maps directly to the classical delayed-consensus stability analysis.
 
 Each robot knows its own current state but receives delayed measurements from its neighbors:
 
-\[
-u_i(t)
-=
--k\sum_j a_{ij}
-\left(
-p_i(t)-p_j(t-\tau)
-\right)
-\]
+$$u_i(t) = -k\sum_j a_{ij} \left(p_i(t)-p_j(t-\tau)\right)$$
 
 This model is closer to a distributed robotic implementation, where local proprioception is immediate while network information arrives late.
 
@@ -163,15 +152,15 @@ The goal is to distinguish behavior caused by the **distributed control law** fr
 
 For every communication graph the framework evaluates spectral properties of the Laplacian, including:
 
-\[
+$$
 \lambda_2(L)
-\]
+$$
 
 which measures algebraic connectivity, and
 
-\[
+$$
 \lambda_{max}(L)
-\]
+$$
 
 which determines the theoretical full-state delay bound.
 
