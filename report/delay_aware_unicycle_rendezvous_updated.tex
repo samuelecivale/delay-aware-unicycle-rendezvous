@@ -72,10 +72,12 @@ the consensus field onto admissible unicycle motions.
 The study validates this interpretation through delay sweeps, topology and gain studies,
 disconnected graphs, and several extensions such as leader--follower rendezvous, rigid
 formations, obstacle avoidance, switching graphs, time-varying delays and edge-dependent
-delays. The delay analysis is inspired by the consensus-with-communication-delays framework
-of Seuret, Dimarogonas and Johansson~\cite{seuret2008consensus}, while the nonholonomic
-rendezvous controller is motivated by the consensus-based rendezvous and formation laws for
-unicycle robots proposed by Listmann, Masalawala and Adamy~\cite{listmann2009formation}.
+delays. The full-state critical-delay result is the gain-scaled form of the classical uniform-delay
+consensus bound established by Olfati-Saber and Murray~\cite{olfati2004consensus}. The
+neighbour-only communication-delay model is also related to the framework studied by Seuret,
+Dimarogonas and Johansson~\cite{seuret2008consensus}, while the nonholonomic rendezvous
+controller is motivated by the consensus-based rendezvous and formation laws for unicycle
+robots proposed by Listmann, Masalawala and Adamy~\cite{listmann2009formation}.
 \end{abstract}
 
 \section{Introduction}
@@ -264,6 +266,12 @@ networked system is
 \boxed{\;\taucrit = \dfrac{\pi}{2\,k\,\lammax(\Lap)}\;}
 \label{eq:taucrit}
 \end{equation}
+This expression is the direct gain-scaled version of the classical uniform-delay consensus
+condition of Olfati-Saber and Murray~\cite{olfati2004consensus}. In their unit-gain formulation,
+\(\dot x(t)=-Lx(t-\tau)\), average consensus on a fixed connected undirected graph is achieved
+if and only if \(0\leq\tau<\pi/(2\lambda_{\max}(L))\). Introducing the scalar gain \(k\) replaces
+each Laplacian eigenvalue \(\lambda_i\) by \(k\lambda_i\), which gives exactly
+\eqref{eq:taucrit}.
 
 \begin{proposition}[Critical delay]
 Consider the delayed consensus system \eqref{eq:delayed_fullstate} on a connected undirected
@@ -645,6 +653,12 @@ for its substantially larger delay margin.
 
 
 \begin{thebibliography}{9}
+
+\bibitem{olfati2004consensus}
+R. Olfati-Saber and R. M. Murray,
+``Consensus Problems in Networks of Agents With Switching Topology and Time-Delays,''
+\emph{IEEE Transactions on Automatic Control}, vol.~49, no.~9, pp.~1520--1533,
+Sep. 2004, doi:~\href{https://doi.org/10.1109/TAC.2004.834113}{10.1109/TAC.2004.834113}.
 
 \bibitem{seuret2008consensus}
 A. Seuret, D. V. Dimarogonas, and K. H. Johansson,
